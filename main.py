@@ -38,7 +38,7 @@ st.markdown(
 st.markdown('<div class="faixa-azul">SUS AIH 2024</div>', unsafe_allow_html=True)
 
 # Leitura e tratamento da base
-df_tabela = pd.read_csv("EryFaculdade/table_SUS_RIDE_DF_AIH.csv", sep=';', encoding='utf-8')
+df_tabela = pd.read_csv("table_SUS_RIDE_DF_AIH.csv", sep=';', encoding='utf-8')
 
 df_tabela["latitude"] = pd.to_numeric(df_tabela["latitude"].astype(str).str.replace(",", ".", regex=False).str.strip(), errors="coerce")
 df_tabela["longitude"] = pd.to_numeric(df_tabela["longitude"].astype(str).str.replace(",", ".", regex=False).str.strip(), errors="coerce")
