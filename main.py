@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
 
 # Configuração da página
 st.set_page_config(
@@ -87,37 +89,86 @@ with col_metricas:
     st.metric("Valor Total Gasto", f"R$ {df_filtrado['vl_total'].sum()/1_000_000:.2f} mi")
 
 # ========================
-# GRÁFICO DE BARRAS COMPARATIVO
+# GRÁFICO DE BARRAS COMPARATIVO (VALORES REAIS)
 # ========================
 col1, col2 = st.columns(2)
-
 with col1:
-    df_barra = df_filtrado.groupby("mes_nome", as_index=False).agg({
-        "qtd_total": "sum",
-        "vl_total": "sum"
-    })
-    df_barra["mes_num"] = df_barra["mes_nome"].map({v: k for k, v in meses_nome.items()})
-    df_barra = df_barra.sort_values("mes_num")
-
-    # Normaliza para igualar visualmente as alturas
-    df_barra["qtd_total_normalizada"] = df_barra["qtd_total"] / df_barra["qtd_total"].max()
-    df_barra["vl_total_normalizada"] = df_barra["vl_total"] / df_barra["vl_total"].max()
-
-    fig_bar = px.bar(
-        df_barra,
-        x="mes_nome",
-        y=["qtd_total_normalizada", "vl_total_normalizada"],
-        barmode="group",
-        title="Comparativo por Mês - Quantidade vs Valor",
-        color_discrete_sequence=["mediumseagreen", "darkred"]
+    df_barra = (
+    df_filtrado
+    .groupby("mes_aih", as_index=False)
+    .agg(qtd_total=("qtd_total","sum"), vl_total=("vl_total","sum"))
+    .sort_values("mes_aih")
     )
-    fig_bar.update_layout(
-        xaxis_title="Mês",
-        yaxis_title="Valores Normalizados",
-        legend_title=None,
-        bargap=0.2
+    df_barra["qtd_mi"] = df_barra["qtd_total"] / 1_000_000
+    df_barra["vl_mi"]  = df_barra["vl_total"]  / 1_000_000
+
+    # cria figura com eixo secundário
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+    # —– trace 1: quantidade (eixo y1) —–
+    fig.add_trace(
+        go.Bar(
+            x=df_barra["mes_aih"],
+            y=df_barra["qtd_mi"],
+            name="Quantidade (mi)",
+            marker_color="mediumseagreen",
+            text=df_barra["qtd_mi"].map(lambda v: f"{v:.1f}"),
+            textposition="outside",
+            offsetgroup=1        # <— grupo 1
+        ),
+        secondary_y=False
     )
-    st.plotly_chart(fig_bar, use_container_width=True)
+
+    # —– trace 2: valor (eixo y2) —–
+    fig.add_trace(
+        go.Bar(
+            x=df_barra["mes_aih"],
+            y=df_barra["vl_mi"],
+            name="Valor (mi)",
+            marker_color="darkred",
+            text=df_barra["vl_mi"].map(lambda v: f"{v:.1f}"),
+            textposition="outside",
+            offsetgroup=2        # <— grupo 2
+        ),
+        secondary_y=True
+    )
+
+    # layout e estilos
+    fig.update_layout(
+        title="Comparativo por Mês – Quantidade vs Valor",
+        barmode="group",         # side-by-side
+        bargap=0.15,
+        legend=dict(orientation="h", y=1.05, x=1, xanchor="right"),
+        margin=dict(t=50, b=30, l=40, r=40)
+    )
+
+    # eixo X formatado
+    fig.update_xaxes(
+        tickmode="array",
+        tickvals=list(range(1,13)),
+        ticktext=[f"{m:02d}" for m in range(1,13)],
+        title_text="Mês"
+    )
+
+    # eixo y1 (quantidade) com grade tracejada
+    fig.update_yaxes(
+        title_text="Quantidade (mi)",
+        range=[0, 1.5],
+        showgrid=True,
+        gridcolor="lightgrey",
+        griddash="dash",
+        secondary_y=False
+    )
+
+    # eixo y2 (valor)
+    fig.update_yaxes(
+        title_text="Valor (mi)",
+        range=[0, 60],
+        showgrid=False,
+        secondary_y=True
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
 
 # ========================
 # GRÁFICO DE LINHA VALOR
